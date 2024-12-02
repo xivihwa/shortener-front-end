@@ -42,7 +42,6 @@ def _links(links: list[_Link]) -> str:
     "/register",
     tags=["users"],
     status_code=status.HTTP_201_CREATED,
-    description="Register new user. Forbidden for logged in users",
     responses={
         status.HTTP_409_CONFLICT: {
             "description": "Username already taken",
@@ -54,6 +53,13 @@ async def register(
     input: Annotated[CreateUserModel, Body()],
     response: Response,
 ) -> UserModel:
+    """Endpoint for registering new users
+
+    While most of applications require two password fields to ensure user never
+    mistypes their password, we use only one such field for simplicity. If you
+    want to have password and verify password fields in your app, consider
+    implementing them on front-end.
+    """
     if not is_username_available(input.username):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="Username already taken"
@@ -74,6 +80,12 @@ async def register(
 async def login(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()], response: Response
 ) -> Token:
+    """Endpoint for logging in
+
+    While rest of project endpoints work with json data, this one is
+    implemented according to OAuth2 standard and accepts form-urlencoded.
+    Consider it when implementing a client.
+    """
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -89,26 +101,45 @@ async def login(
 @api.get(
     "/me",
     tags=["users"],
-    description="Returns the currently logged in user",
     responses={
         status.HTTP_401_UNAUTHORIZED: {
-            "description": "Not logged in",
+            "description": "This error is thrown when user is not authorized",
             "model": Detailed,
-        }
+        },
     },
 )
 async def me(
     auth_user: Annotated[UserModel, Depends(get_auth_user)],
+    response: Response,
 ) -> UserModel:
+    """Returns currenlty authenticated user"""
+    response.headers["Link"] = _links(
+        [
+            _Link("/api/me/links", "urls"),
+        ]
+    )
     return auth_user
 
 
-@api.get("/me/urls", tags=["urls"])
+@api.get(
+    "/me/urls",
+    tags=["urls"],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "This error is thrown when user is not authorized",
+            "model": Detailed,
+        },
+    },
+)
 async def list_my_urls(
     auth_user: Annotated[UserModel, Depends(get_auth_user)],
     query: Annotated[PageParams, Query()],
     response: Response,
 ) -> list[URLModel]:
+    """Lists URLs, which were created by currenlty authenticated users.
+
+    Result is paginated, page size is 10 items per page.
+    """
     urls = get_user_urls(auth_user, query.page)
     header_links = [
         _Link("/api/me/links?page=1", "first"),
@@ -122,11 +153,33 @@ async def list_my_urls(
     return urls
 
 
-@api.get("/me/links/{short}/redirects", tags=["urls"])
+@api.get(
+    "/me/links/{short}/redirects",
+    tags=["urls"],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "This error is thrown when user is not authorized",
+            "model": Detailed,
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "description": (
+                "This error is thrown when user tries to access non-existing URL "
+                "or the URL which was not created by them"
+            ),
+            "model": Detailed,
+        },
+    },
+)
 async def get_link_redirects(
     auth_user: Annotated[UserModel, Depends(get_auth_user)],
     short: str,
 ) -> list[datetime]:
+    """Returns list of timestamps when URL with given {short} was clicked.
+    These timestamps are ordered in the ascending order. User is allowed to
+    access only info on the links they created.
+
+    Result is not paginated, you will get all the timestamps at once.
+    """
     url = find_url(short=short)
     if url is None or url.owner.lower() != auth_user.username.lower():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
@@ -134,9 +187,22 @@ async def get_link_redirects(
     return redirects
 
 
-@api.post("/me/urls", tags=["urls"])
+@api.post(
+    "/me/urls",
+    tags=["urls"],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "This error is thrown when user is not authorized",
+            "model": Detailed,
+        },
+    },
+)
 async def shorten_url(
     auth_user: Annotated[UserModel, Depends(get_auth_user)],
     input: Annotated[CreateURLModel, Body()],
 ) -> URLModel:
+    """Creates a new shortened URL. This is not idempotent action, meaning user
+    may shorten the same URL multiple times getting the different output each
+    time.
+    """
     return create_url(input, auth_user)

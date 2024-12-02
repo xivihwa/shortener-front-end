@@ -27,6 +27,7 @@ class CreateUserModel(BaseModel):
         max_length=20,
         pattern=r"^[a-zA-Z0-9_]+$",
         examples=["johndoe2024"],
+        description="Uniq username which identifies the user, case-insensitive",
     )
     password: str = Field(min_length=8, examples=["$3cr3tP@ssw0rd"])
     full_name: Optional[str] = Field(max_length=64, examples=["John Doe"], default=None)
@@ -37,14 +38,25 @@ class UserModel(BaseModel):
 
     username: str = Field(examples=["johndoe2024", "Grady_Booch"])
     full_name: Optional[str] = Field(examples=[None, "Grady Booch"])
-    links: int = Field(ge=0, examples=[0, 100, 200])
+    links: int = Field(
+        ge=0,
+        examples=[0, 100, 200],
+        description="Count of the short URLs, user created",
+    )
 
 
 class URLModel(BaseModel):
-    url: AnyHttpUrl = Field(examples=["https://example.com"])
-    short: str = Field(examples=["deadbeef"])
+    url: AnyHttpUrl = Field(
+        examples=["https://example.com"], description="Must be a valid http/https URL"
+    )
+    short: str = Field(
+        examples=["deadbeef"],
+        description="Short identifier of the URL, generated automatically. Append that to root path to get redirected",
+    )
     owner: str = Field(examples=["johndoe2024"])
-    redirects: int = Field(ge=0, examples=[0])
+    redirects: int = Field(
+        ge=0, examples=[0], description="Count of times this URL was used"
+    )
     created_at: datetime
 
 
