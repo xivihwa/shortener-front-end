@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Response, status
 from fastapi.responses import HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
 from .api import api
 from .logic import find_url, count_redirect
 
@@ -39,7 +40,15 @@ def init():
 
 init()
 
+
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.include_router(api, prefix="/api", tags=["api"])
 
 
