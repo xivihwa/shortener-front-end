@@ -56,7 +56,7 @@ app.include_router(api, prefix="/api", tags=["api"])
 async def root():
     return """
         <html><head><title>URL Shortener</title></head>
-        <body><h1>KPI-tter</h1>
+        <body><h1>URL Shortener</h1>
         <p><a href="/docs">Swagger UI</a></p>
         <p><a href="/redoc">Redoc</a></p>
         <p><a href="/openapi.json">OpenAPI Schema</a></p>
