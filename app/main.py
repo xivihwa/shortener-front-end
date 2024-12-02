@@ -19,7 +19,7 @@ def init():
         "app/logic.py",
     ]
     users = [
-        create_user(CreateUserModel(username=f"user_{i}", password="12345678"))
+        create_user(CreateUserModel(username=f"user_{i+1}", password="12345678"))
         for i in range(3)
     ]
     urls = [
